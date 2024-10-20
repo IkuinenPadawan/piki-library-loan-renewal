@@ -17,15 +17,22 @@ def setup_driver():
 def login(driver, username, password):
     driver.get("https://piki.finna.fi/MyResearch/UserLogin")
 
-    username_field = driver.find_element(By.NAME, "username")
-    password_field = driver.find_element(By.NAME, "password")
+    username_field = find_element_by_name(driver, "username")
+    password_field = find_element_by_name(driver, "password")
 
-    username_field.send_keys(username)
-    password_field.send_keys(password)
+    insert_to_field(username_field, username)
+    insert_to_field(password_field, password)
 
-    login_button = driver.find_element(By.NAME, "processLogin")
-    login_button.click()
+    click_button(driver.find_element(By.NAME, "processLogin"))
 
+def find_element_by_name(driver, name):
+    return driver.find_element(By.NAME, name)
+
+def insert_to_field(field, input):
+    field.send_keys(input)
+
+def click_button(button):
+    button.click()
 
 def main():
     driver = setup_driver()
