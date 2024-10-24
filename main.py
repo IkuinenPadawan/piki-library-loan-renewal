@@ -50,13 +50,23 @@ def print_loan_details(driver):
             print(status.text.strip())
 
 def ask_renew_all_loans(driver):
-    renewal_choice = input("Renew all loans? ({} / {})".format(RenewConfirmation.YES.value, RenewConfirmation.NO.value))
-    if renewal_choice.strip() == RenewConfirmation.YES.value:
+    renew_all_loans = get_user_confirmation()
+    if renew_all_loans:
         renew_all_button = find_element_by_name(driver, "renewAll")
         click_button(renew_all_button)
         WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "confirm_renew_all_yes")))
         confirm_button = driver.find_element(By.ID, "confirm_renew_all_yes")
         click_button(confirm_button)
+
+def get_user_confirmation():
+    while True:
+        user_input = input("Renew all loans? ({} / {})".format(RenewConfirmation.YES.value, RenewConfirmation.NO.value))
+        if user_input.strip() == RenewConfirmation.YES.value:
+            return True
+        elif user_input.strip() == RenewConfirmation.NO.value:
+            return False
+        else:
+            print(f"Invalid input: '{user_input}'. Please enter either '{RenewConfirmation.YES.value}' or '{RenewConfirmation.NO.value}'")
 
 def find_element_by_name(driver, name):
     return driver.find_element(By.NAME, name)
