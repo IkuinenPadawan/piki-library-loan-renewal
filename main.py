@@ -31,32 +31,33 @@ def login(driver, username, password):
     insert_to_field(username_field, username)
     insert_to_field(password_field, password)
 
-    click_button(driver.find_element(By.NAME, "processLogin"))
+    click_button(find_element_by_name(driver, "processLogin"))
 
 def print_loan_details(driver):
-    # Wait for 10 seconds for the table to be visible on the page
     WebDriverWait(driver, 5).until(
         EC.visibility_of_element_located((By.CSS_SELECTOR, 'table.myresearch-table'))
     )
 
     soup = BeautifulSoup(driver.page_source, 'html.parser')
+    loans_table = soup.find("table", {"class": "myresearch-table"})
 
-    title_column = soup.find_all('div', {'class': 'title-column'})
-    status_column = soup.find_all('div', {'class': 'status-column'})
+    for loan in loans_table.find_all("tr")[1:]:
+        title_column = loan.find("div", {"class": "title-column"}).text.strip()
+        status_column = loan.find("div", {"class": "status-column"}).text.strip()
 
-    if len(title_column) == len(status_column):
-        for title, status in zip(title_column, status_column):
-            print(title.text.strip())
-            print(status.text.strip())
+        print(f"Title: {title_column}")
+        print(f"Status: {status_column}")
 
 def ask_renew_all_loans(driver):
-    renew_all_loans = get_user_confirmation()
-    if renew_all_loans:
-        renew_all_button = find_element_by_name(driver, "renewAll")
-        click_button(renew_all_button)
-        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "confirm_renew_all_yes")))
-        confirm_button = driver.find_element(By.ID, "confirm_renew_all_yes")
-        click_button(confirm_button)
+    if not get_user_confirmation():
+        return
+
+    renew_all_button = find_element_by_name(driver, "renewAll")
+    click_button(renew_all_button)
+
+    WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "confirm_renew_all_yes")))
+    confirm_button = driver.find_element(By.ID, "confirm_renew_all_yes")
+    click_button(confirm_button)
 
 def get_user_confirmation():
     while True:
