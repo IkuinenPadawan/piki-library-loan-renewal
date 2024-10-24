@@ -8,6 +8,11 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+from enum import Enum
+
+class RenewConfirmation(Enum):
+    YES = 'y'
+    NO = 'n'
 
 load_dotenv()
 LIBRARY_USERNAME = os.getenv("LIBRARY_USERNAME")
@@ -30,7 +35,7 @@ def login(driver, username, password):
 
 def print_loan_details(driver):
     # Wait for 10 seconds for the table to be visible on the page
-    WebDriverWait(driver, 10).until(
+    WebDriverWait(driver, 5).until(
         EC.visibility_of_element_located((By.CSS_SELECTOR, 'table.myresearch-table'))
     )
 
@@ -44,6 +49,15 @@ def print_loan_details(driver):
             print(title.text.strip())
             print(status.text.strip())
 
+def ask_renew_all_loans(driver):
+    renewal_choice = input("Renew all loans? ({} / {})".format(RenewConfirmation.YES.value, RenewConfirmation.NO.value))
+    if renewal_choice.strip() == RenewConfirmation.YES.value:
+        renew_all_button = find_element_by_name(driver, "renewAll")
+        click_button(renew_all_button)
+        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "confirm_renew_all_yes")))
+        confirm_button = driver.find_element(By.ID, "confirm_renew_all_yes")
+        click_button(confirm_button)
+
 def find_element_by_name(driver, name):
     return driver.find_element(By.NAME, name)
 
@@ -56,6 +70,8 @@ def click_button(button):
 def main():
     driver = setup_driver()
     login(driver, LIBRARY_USERNAME, LIBRARY_PASSWORD)
+    print_loan_details(driver)
+    ask_renew_all_loans(driver)
     print_loan_details(driver)
     driver.quit()
 
