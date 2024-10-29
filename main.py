@@ -1,5 +1,6 @@
 import time
 import os
+import logging
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -19,55 +20,73 @@ LIBRARY_USERNAME = os.getenv("LIBRARY_USERNAME")
 LIBRARY_PASSWORD = os.getenv("LIBRARY_PASSWORD")
 
 def setup_driver():
-    options = Options()
-    return webdriver.Chrome(options=options)
+    try:
+        options = Options()
+        return webdriver.Chrome(options=options)
+    except Exception as e:
+        logging.error(f"Failed to setup driver: {e}")
+        exit(1)
 
 def login(driver, username, password):
-    driver.get("https://piki.finna.fi/MyResearch/UserLogin")
+    try:
+        driver.get("https://piki.finna.fi/MyResearch/UserLogin")
 
-    username_field = find_element_by_name(driver, "username")
-    password_field = find_element_by_name(driver, "password")
+        username_field = find_element_by_name(driver, "username")
+        password_field = find_element_by_name(driver, "password")
 
-    insert_to_field(username_field, username)
-    insert_to_field(password_field, password)
+        insert_to_field(username_field, username)
+        insert_to_field(password_field, password)
 
-    click_button(find_element_by_name(driver, "processLogin"))
+        click_button(find_element_by_name(driver, "processLogin"))
+    except Exception as e:
+        logging.error(f"Failed to log in: {e}")
+        exit(1)
 
 def print_loan_details(driver):
-    WebDriverWait(driver, 5).until(
-        EC.visibility_of_element_located((By.CSS_SELECTOR, 'table.myresearch-table'))
-    )
+    try:
+        WebDriverWait(driver, 5).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, 'table.myresearch-table'))
+        )
 
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
-    loans_table = soup.find("table", {"class": "myresearch-table"})
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        loans_table = soup.find("table", {"class": "myresearch-table"})
 
-    for loan in loans_table.find_all("tr")[1:]:
-        title_column = loan.find("div", {"class": "title-column"}).text.strip()
-        status_column = loan.find("div", {"class": "status-column"}).text.strip()
+        for loan in loans_table.find_all("tr")[1:]:
+            title_column = loan.find("div", {"class": "title-column"}).text.strip()
+            status_column = loan.find("div", {"class": "status-column"}).text.strip()
 
-        print(f"Title: {title_column}")
-        print(f"Status: {status_column}")
+            print(f"Title: {title_column}")
+            print(f"Status: {status_column}")
+    except Exception as e:
+        logging.error(f"Failed to print loan details: {e}")
+
 
 def ask_renew_all_loans(driver):
-    if not get_user_confirmation():
-        return
+    try:
+        if not get_user_confirmation():
+            return
 
-    renew_all_button = find_element_by_name(driver, "renewAll")
-    click_button(renew_all_button)
+        renew_all_button = find_element_by_name(driver, "renewAll")
+        click_button(renew_all_button)
 
-    WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "confirm_renew_all_yes")))
-    confirm_button = driver.find_element(By.ID, "confirm_renew_all_yes")
-    click_button(confirm_button)
+        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "confirm_renew_all_yes")))
+        confirm_button = driver.find_element(By.ID, "confirm_renew_all_yes")
+        click_button(confirm_button)
+    except Exception as e:
+        logging.error(f"Failed to renew all loans: {e}")
 
 def get_user_confirmation():
     while True:
-        user_input = input("Renew all loans? ({} / {})".format(RenewConfirmation.YES.value, RenewConfirmation.NO.value))
-        if user_input.strip() == RenewConfirmation.YES.value:
-            return True
-        elif user_input.strip() == RenewConfirmation.NO.value:
-            return False
-        else:
-            print(f"Invalid input: '{user_input}'. Please enter either '{RenewConfirmation.YES.value}' or '{RenewConfirmation.NO.value}'")
+        try:
+            user_input = input("Renew all loans? ({} / {})".format(RenewConfirmation.YES.value, RenewConfirmation.NO.value))
+            if user_input.strip() == RenewConfirmation.YES.value:
+                return True
+            elif user_input.strip() == RenewConfirmation.NO.value:
+                return False
+            else:
+                print(f"Invalid input: '{user_input}'. Please enter either '{RenewConfirmation.YES.value}' or '{RenewConfirmation.NO.value}'")
+        except Exception as e:
+            logging.error(f"Failed to get user confirmation: {e}")
 
 def find_element_by_name(driver, name):
     return driver.find_element(By.NAME, name)
@@ -79,12 +98,16 @@ def click_button(button):
     button.click()
 
 def main():
-    driver = setup_driver()
-    login(driver, LIBRARY_USERNAME, LIBRARY_PASSWORD)
-    print_loan_details(driver)
-    ask_renew_all_loans(driver)
-    print_loan_details(driver)
-    driver.quit()
+    try:
+        driver = setup_driver()
+        login(driver, LIBRARY_USERNAME, LIBRARY_PASSWORD)
+        print_loan_details(driver)
+        ask_renew_all_loans(driver)
+        print_loan_details(driver)
+    except Exception as e:
+        logging.error(f"Failed to run the loan renewal script: {e}")
+    finally:
+        driver.quit()
 
 if __name__ == '__main__':
     main()
