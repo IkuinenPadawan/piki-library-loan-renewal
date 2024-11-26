@@ -10,6 +10,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
 from bs4 import BeautifulSoup
 from enum import Enum
+from rich.console import Console
+from rich.table import Table
 
 class RenewConfirmation(Enum):
     YES = 'y'
@@ -18,6 +20,8 @@ class RenewConfirmation(Enum):
 load_dotenv()
 LIBRARY_USERNAME = os.getenv("LIBRARY_USERNAME")
 LIBRARY_PASSWORD = os.getenv("LIBRARY_PASSWORD")
+
+console = Console()
 
 def setup_driver():
     try:
@@ -51,12 +55,9 @@ def print_loan_details(driver):
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         loans_table = soup.find("table", {"class": "myresearch-table"})
 
-        for loan in loans_table.find_all("tr")[1:]:
-            title_column = loan.find("div", {"class": "title-column"}).text.strip()
-            status_column = loan.find("div", {"class": "status-column"}).text.strip()
+        loan_table = build_loan_detail_table(loans_table)
+        console.print(loan_table)
 
-            print(f"Title: {title_column}")
-            print(f"Status: {status_column}")
     except Exception as e:
         logging.error(f"Failed to print loan details: {e}")
 
@@ -147,6 +148,25 @@ def renew_some_loans(driver):
             print("Selected loans renewed!")
         except Exception as e:
             logging.error(f"Failed to renew selected: {e}")
+
+def build_loan_detail_table(loan_table):
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Title")
+    table.add_column("Author") 
+    table.add_column("Status", justify="right")
+
+
+    for loan in loan_table.find_all("tr")[1:]:
+        title_column = loan.find("div", {"class": "title-column"}).text.strip()
+        status_column = loan.find("div", {"class": "status-column"}).text.strip()
+        record_title = loan.find("a", {"class": "record-title"}).text.strip()
+        record_author = loan.find("span", {"class": "authority-label"}).text.strip()
+
+        table.add_row(
+            record_title, record_author, status_column
+        )
+
+    return table
 
 def main():
     try:
