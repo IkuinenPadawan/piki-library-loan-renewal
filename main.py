@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
 from bs4 import BeautifulSoup
 from enum import Enum
 
@@ -61,11 +61,8 @@ def print_loan_details(driver):
         logging.error(f"Failed to print loan details: {e}")
 
 
-def ask_renew_all_loans(driver):
+def renew_all_loans(driver):
     try:
-        if not get_user_confirmation():
-            return
-
         renew_all_button = find_element_by_name(driver, "renewAll")
         click_button(renew_all_button)
 
@@ -75,10 +72,10 @@ def ask_renew_all_loans(driver):
     except Exception as e:
         logging.error(f"Failed to renew all loans: {e}")
 
-def get_user_confirmation():
+def ask_if_renew_all_or_some():
     while True:
         try:
-            user_input = input("Renew all loans? ({} / {})".format(RenewConfirmation.YES.value, RenewConfirmation.NO.value))
+            user_input = input("Renew all loans: y \n Renew some loans: n ({} / {})".format(RenewConfirmation.YES.value, RenewConfirmation.NO.value))
             if user_input.strip() == RenewConfirmation.YES.value:
                 return True
             elif user_input.strip() == RenewConfirmation.NO.value:
@@ -97,12 +94,71 @@ def insert_to_field(field, input):
 def click_button(button):
     button.click()
 
+def renew_some_loans(driver):
+    rows = driver.find_elements(By.CSS_SELECTOR, "tr.myresearch-row")
+
+    checkboxes = {}
+    print("Available options to select:")
+
+    for index, row in enumerate(rows, start=1):
+        try:
+            if row.get_attribute("aria-hidden") == "true":
+                continue
+
+            try:
+                title_element = row.find_element(By.CSS_SELECTOR, "a.record-title")
+                title = title_element.text
+                checkbox = row.find_element(By.CSS_SELECTOR, "input.checkbox-select-item")
+                checkboxes[index] = (title, checkbox)
+                print(f"{index}: {title}")
+            except NoSuchElementException:
+                logging.warning(f"Skipping a row without a checkbox or book")
+                continue
+
+        except Exception as e:
+            logging.error(f"Skipping a row due to error: {e}")
+            logging.error(f"Row HTML: {row.get_attribute('outerHTML')}")
+
+    choices = input("\nEnter the numbers of the books you want to renew, separated by commas: ")
+
+    selected_indices = [int(num.strip()) for num in choices.split(",") if num.strip().isdigit()]
+    for index in selected_indices:
+        if index in checkboxes:
+            title, checkbox = checkboxes[index]
+            driver.execute_script("arguments[0].scrollIntoView();", checkbox)  
+            checkbox.click()
+            print(f"Checked: {title}")
+        else:
+            print(f"Invalid selection: {index}")
+
+    confirm = input("\nConfirm renewal(s)? (y/n): ")
+
+    if confirm.lower() == "y":
+        try:
+            dropdown_toggle = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "renewSelected"))
+            )
+            dropdown_toggle.click()
+
+            confirm_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.ID, "confirm_renew_selected_yes"))
+            )
+            click_button(confirm_button)
+            print("Selected loans renewed!")
+        except Exception as e:
+            logging.error(f"Failed to renew selected: {e}")
+
 def main():
     try:
         driver = setup_driver()
         login(driver, LIBRARY_USERNAME, LIBRARY_PASSWORD)
         print_loan_details(driver)
-        ask_renew_all_loans(driver)
+        renew_all = ask_if_renew_all_or_some()
+        if renew_all:
+            renew_all_loans(driver)
+        else:
+            renew_some_loans(driver)
+        time.sleep(3)
         print_loan_details(driver)
     except Exception as e:
         logging.error(f"Failed to run the loan renewal script: {e}")
