@@ -22,12 +22,12 @@ This script is designed to simplify the process of renewing library loans by aut
 
 * Automatically logs in to the library website using a Chrome browser
 * Retrieves loan information for all active loans
-* Renews all loans with an upcoming due date
+* Renew all loans with an upcoming due date
+* Select loans to be renewed
 
 ### Future Features
 * Better error handling
 * Headless mode
-* Select loans to be renewed
 * Renew loans automatically when loans due (check email for loan due reminders)
 * Configurations to allow (as far as possible) for usage on different region libraries (all regions have their own website implementations so modifications needed depending on the region)
 
@@ -40,6 +40,7 @@ This script is designed to simplify the process of renewing library loans by aut
 * Selenium 4.x
 * BeautifulSoup 4.x
 * Python-dotenv
+* Rich
 * Chrome based browser
 
 ## Installation
