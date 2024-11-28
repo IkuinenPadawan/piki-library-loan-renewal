@@ -1,6 +1,7 @@
 import time
 import os
 import logging
+import sys
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -12,6 +13,7 @@ from bs4 import BeautifulSoup
 from enum import Enum
 from rich.console import Console
 from rich.table import Table
+from rich.prompt import Prompt
 
 class RenewConfirmation(Enum):
     YES = 'y'
@@ -65,24 +67,28 @@ def print_loan_details(driver):
 def renew_all_loans(driver):
     try:
         renew_all_button = find_element_by_name(driver, "renewAll")
+        if not renew_all_button:
+            sys.exit(0)
         click_button(renew_all_button)
 
         WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "confirm_renew_all_yes")))
         confirm_button = driver.find_element(By.ID, "confirm_renew_all_yes")
         click_button(confirm_button)
     except Exception as e:
-        logging.error(f"Failed to renew all loans: {e}")
+        console.print("Loans cannot be renewed", style="red")
+        sys.exit(0)
 
 def ask_if_renew_all_or_some():
-    while True:
         try:
-            user_input = input("Renew all loans: y \n Renew some loans: n ({} / {})".format(RenewConfirmation.YES.value, RenewConfirmation.NO.value))
-            if user_input.strip() == RenewConfirmation.YES.value:
-                return True
-            elif user_input.strip() == RenewConfirmation.NO.value:
-                return False
-            else:
-                print(f"Invalid input: '{user_input}'. Please enter either '{RenewConfirmation.YES.value}' or '{RenewConfirmation.NO.value}'")
+            renew_all = Prompt.ask(
+                "Renew all loans? y(es) | n(o) to Select loans to be renewed" , 
+                choices=[RenewConfirmation.YES.value, RenewConfirmation.NO.value],
+            )
+            match renew_all:
+                case RenewConfirmation.YES.value:
+                    return True
+                case RenewConfirmation.NO.value:
+                    return False
         except Exception as e:
             logging.error(f"Failed to get user confirmation: {e}")
 
@@ -99,7 +105,6 @@ def renew_some_loans(driver):
     rows = driver.find_elements(By.CSS_SELECTOR, "tr.myresearch-row")
 
     checkboxes = {}
-    print("Available options to select:")
 
     for index, row in enumerate(rows, start=1):
         try:
@@ -120,6 +125,11 @@ def renew_some_loans(driver):
             logging.error(f"Skipping a row due to error: {e}")
             logging.error(f"Row HTML: {row.get_attribute('outerHTML')}")
 
+    if not checkboxes:
+        console.print("No loans can be renewed", style="red")
+        sys.exit(0)
+
+    console.print("Available options to select:", style="bold")
     choices = input("\nEnter the numbers of the books you want to renew, separated by commas: ")
 
     selected_indices = [int(num.strip()) for num in choices.split(",") if num.strip().isdigit()]
@@ -157,7 +167,6 @@ def build_loan_detail_table(loan_table):
 
 
     for loan in loan_table.find_all("tr")[1:]:
-        title_column = loan.find("div", {"class": "title-column"}).text.strip()
         status_column = loan.find("div", {"class": "status-column"}).text.strip()
         record_title = loan.find("a", {"class": "record-title"}).text.strip()
         record_author = loan.find("span", {"class": "authority-label"}).text.strip()
